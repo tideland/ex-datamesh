@@ -21,9 +21,9 @@ defmodule DatameshTest do
 
       def init(_opts), do: {:ok, %{}}
 
-      def process(data, state, trigger) do
+      def process(data, state, broadcast) do
         # Echo sendet einfach die Daten unverändert weiter
-        trigger.(data)
+        broadcast.(data)
         {:ok, state}
       end
     end
@@ -40,7 +40,7 @@ defmodule DatameshTest do
 
       def init(test_pid), do: {:ok, %{test_pid: test_pid}}
 
-      def process(data, state, _trigger) do
+      def process(data, state, _broadcast) do
         send(state.test_pid, {:received, data})
         {:ok, state}
       end
@@ -54,7 +54,7 @@ defmodule DatameshTest do
 
     # Daten an Echo senden
     test_data = "Hello DataMesh"
-    DataMesh.trigger_data(:echo1, test_data)
+    DataMesh.send_data(:echo1, test_data)
 
     # Prüfen ob Daten ankommen
     assert_receive {:received, ^test_data}, 1000
@@ -70,6 +70,6 @@ defmodule DatameshTest do
     end
 
     assert {:ok, _pid} = DataMesh.start_node(:simple, SimpleLogic, [])
-    assert :ok = DataMesh.trigger_data(:simple, "test")
+    assert :ok = DataMesh.send_data(:simple, "test")
   end
 end
