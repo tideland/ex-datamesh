@@ -59,4 +59,17 @@ defmodule DatameshTest do
     # Prüfen ob Daten ankommen
     assert_receive {:received, ^test_data}, 1000
   end
+
+  test "node logic without init works with default state" do
+    defmodule SimpleLogic do
+      @behaviour NodeLogic
+
+      def process(_data, state, _broadcast) do
+        {:ok, state}
+      end
+    end
+
+    assert {:ok, _pid} = DataMesh.start_node(:simple, SimpleLogic, [])
+    assert :ok = DataMesh.trigger_data(:simple, "test")
+  end
 end

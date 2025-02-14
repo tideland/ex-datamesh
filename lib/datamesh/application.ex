@@ -1,3 +1,6 @@
+# Copyright (c) 2025 Tideland - Frank Mueller
+# Licensed under the BSD 3-Clause License
+
 defmodule DataMesh.Application do
   use Application
   

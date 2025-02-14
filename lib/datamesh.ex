@@ -1,6 +1,12 @@
+# Copyright (c) 2025 Tideland - Frank Mueller
+# Licensed under the BSD 3-Clause License
+
 defmodule DataMesh do
   @moduledoc """
-  Public API for the DataMesh system.
+  DataMesh is an Elixir library providing a framework for data
+  processing in distributed systems. It allows you to create a
+  network of processing nodes where each node can receive, process,
+  and forward data to connected nodes.
   """
 
   @doc """
@@ -11,6 +17,19 @@ defmodule DataMesh do
   end
 
   @doc """
+  Start a list of nodes, each defined as a tuple with node ID, logic
+  module and options.
+  """
+  def start_nodes(nodes) when is_list(nodes) do
+    Enum.reduce_while(nodes, :ok, fn {id, logic, args}, _acc ->
+      case start_node(id, logic, args) do
+        {:ok, _pid} -> {:cont, :ok}
+        error -> {:halt, error}
+      end
+    end)
+  end
+
+  @doc """
   Creates a link between two nodes.
   """
   def create_link(from_node, to_node) do
@@ -18,9 +37,9 @@ defmodule DataMesh do
   end
 
   @doc """
-  Triggers data processing in a specific node.
+  Sends data processing in a specific node.
   """
-  def trigger_data(node_id, data) do
+  def send_data(node_id, data) do
     GenServer.cast(via_tuple(node_id), {:process_data, data})
   end
 
@@ -31,6 +50,11 @@ defmodule DataMesh do
     GenServer.call(via_tuple(node_id), :get_info)
   end
 
-  # Helper function used internally
+  ##
+  # PRIVATE FUNCTIONS
+  ##
+
+  # Create a tuple helping to retrieve node information from
+  # the registry.
   defp via_tuple(node_id), do: {:via, Registry, {DataMesh.NodeRegistry, node_id}}
 end
