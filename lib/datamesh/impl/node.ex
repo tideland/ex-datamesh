@@ -4,11 +4,15 @@ defmodule DataMesh.Impl.Node do
 
   @moduledoc false
 
-  # Start the data node an register it
   def start_link(node_id, logic_module, options) do
-    GenServer.start_link(__MODULE__, {node_id, logic_module, options},
-      name: {:via, Registry, {DataMesh.NodeRegistry, node_id}}
-    )
+    unless function_exported?(logic_module, :process, 3) do
+      # Needs at least the process/3 function
+      {:error, {:invalid_logic_module, node_id}}
+    else
+      GenServer.start_link(__MODULE__, {node_id, logic_module, options},
+        name: {:via, Registry, {DataMesh.NodeRegistry, node_id}}
+      )
+    end
   end
 
   #
@@ -25,11 +29,9 @@ defmodule DataMesh.Impl.Node do
       logic_state: nil
     }
 
-    # Call optional init callback if defined
     state =
       if function_exported?(logic_module, :init, 1) do
-        # Call the init function of the logic module
-        # if it's implemented
+        # Call the init/1 if it's implemented
         case logic_module.init(options) do
           {:ok, logic_state} -> %{initial_state | logic_state: logic_state}
           _ -> initial_state

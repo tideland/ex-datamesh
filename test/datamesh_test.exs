@@ -1,12 +1,15 @@
+# Copyright (c) 2025 Tideland - Frank Mueller
+# Licensed under the BSD 3-Clause License
+
 defmodule DatameshTest do
   use ExUnit.Case
   doctest DataMesh
 
   setup do
-    # Application als Ganzes starten
+    # Start application befor tests
     {:ok, _} = Application.ensure_all_started(:datamesh)
 
-    # Cleanup nach dem Test
+    # Stop application when tests are done
     on_exit(fn ->
       Application.stop(:datamesh)
     end)
@@ -14,50 +17,22 @@ defmodule DatameshTest do
     :ok
   end
 
-  # Ein einfacher Test mit einem Echo-Node
   test "basic node creation and data flow" do
-    defmodule Echo do
-      @behaviour DataMesh.NodeLogic
+    assert {:ok, broadcast_pid} = DataMesh.start_node(:broadcast, Broadcaster, [])
+    assert is_pid(broadcast_pid)
 
-      def init(_opts), do: {:ok, %{}}
-
-      def process(data, state, broadcast) do
-        # Echo sendet einfach die Daten unverändert weiter
-        broadcast.(data)
-        {:ok, state}
-      end
-    end
-
-    # Node erstellen
-    assert {:ok, echo_pid} = DataMesh.start_node(:echo1, Echo, [])
-    assert is_pid(echo_pid)
-
-    # Test-Empfänger erstellen
     test_pid = self()
+    test_data = "Hello DataMesh"
 
-    defmodule Collector do
-      @behaviour DataMesh.NodeLogic
-
-      def init(test_pid), do: {:ok, %{test_pid: test_pid}}
-
-      def process(data, state, _broadcast) do
-        send(state.test_pid, {:received, data})
-        {:ok, state}
-      end
-    end
-
-    # Collector-Node erstellen und mit Echo verbinden
-    assert {:ok, collector_pid} = DataMesh.start_node(:collector1, Collector, test_pid)
+    assert {:ok, collector_pid} = DataMesh.start_node(:collect, Collector, test_pid)
     assert is_pid(collector_pid)
 
-    assert :ok = DataMesh.create_link(:echo1, :collector1)
+    assert :ok = DataMesh.create_link(:broadcast, :collect)
 
-    # Daten an Echo senden
-    test_data = "Hello DataMesh"
-    DataMesh.send_data(:echo1, test_data)
+    DataMesh.send_data(:broadcast, test_data)
+    DataMesh.send_data(:broadcast, :send)
 
-    # Prüfen ob Daten ankommen
-    assert_receive {:received, ^test_data}, 1000
+    assert_receive {:received, [^test_data]}, 1000
   end
 
   test "node logic without init works with default state" do
@@ -71,5 +46,16 @@ defmodule DatameshTest do
 
     assert {:ok, _pid} = DataMesh.start_node(:simple, SimpleLogic, [])
     assert :ok = DataMesh.send_data(:simple, "test")
+  end
+
+  test "invalid module (w/o process/3)" do
+    defmodule InvalidLogic do
+      def annything() do
+        :ok
+      end
+    end
+
+    assert {:error, {:invalid_logic_module, :invalid}} =
+             DataMesh.start_node(:invalid, InvalidLogic, [])
   end
 end
