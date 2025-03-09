@@ -21,7 +21,16 @@ defmodule DataMesh.NodeLogic do
   @callback process(data :: any, state :: state, broadcast :: broadcast_fn) ::
               {:ok, state} | {:error, any}
 
+  @doc """
+  Retrieve data from the node logic.
+  """
+  @callback retrieve(param :: any, state :: state) :: {:ok, any} | {:error, any}
+
+  @callback retrieve(state :: state) :: {:ok, any} | {:error, any}
+
   @optional_callbacks [
-    init: 1
+    init: 1,
+    retrieve: 2,
+    retrieve: 1
   ]
 end

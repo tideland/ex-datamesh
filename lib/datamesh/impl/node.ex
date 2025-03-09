@@ -45,8 +45,7 @@ defmodule DataMesh.Impl.Node do
 
   @impl true
   def handle_cast({:process_data, data}, state) do
-    # Erstelle die Trigger-Funktion für diese Node
-    trigger = fn output_data ->
+    broadcast = fn output_data ->
       Enum.each(state.links, fn link_id ->
         DataMesh.send_data(link_id, output_data)
       end)
@@ -54,13 +53,55 @@ defmodule DataMesh.Impl.Node do
       :ok
     end
 
-    case apply(state.logic_module, :process, [data, state.logic_state, trigger]) do
+    case apply(state.logic_module, :process, [data, state.logic_state, broadcast]) do
       {:ok, new_logic_state} ->
         {:noreply, %{state | logic_state: new_logic_state}}
 
       {:error, reason} ->
         Logger.error("Processing error in node #{state.node_id}: #{inspect(reason)}")
         {:noreply, state}
+    end
+  end
+
+  @impl true
+  def handle_call({:retrieve, key}, _from, state) do
+    if function_exported?(state.logic_module, :retrieve, 2) do
+      case state.logic_module.retrieve(key, state.logic_state) do
+        {:ok, value} ->
+          {:reply, value, state}
+
+        {:error, reason} ->
+          Logger.error("Retrieval error in node #{state.node_id}: #{inspect(reason)}")
+          {:reply, {:error, reason}, state}
+      end
+    end
+  end
+  
+  @impl true
+  def handle_call(:retrieve, _from, state) do
+    if function_exported?(state.logic_module, :retrieve, 1) do
+      case state.logic_module.retrieve(state.logic_state) do
+        {:ok, value} ->
+          {:reply, value, state}
+
+        {:error, reason} ->
+          Logger.error("Retrieval error in node #{state.node_id}: #{inspect(reason)}")
+          {:reply, {:error, reason}, state}
+      end
+    end
+  end
+  
+  @impl true
+  def handle_call({:retrieve, key}, _from, state) do
+    if function_exported?(state.logic_module, :retrieve, 2) do
+      case state.logic_module.retrieve(key, state.logic_state) do
+        {:ok, value} ->
+          {:reply, value, state}
+
+        {:error, reason} ->
+          Logger.error("Retrieval error in node #{state.node_id}: #{inspect(reason)}")
+          {:reply, {:error, reason}, state}
+      end
     end
   end
 

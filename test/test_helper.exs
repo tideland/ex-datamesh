@@ -3,52 +3,55 @@
 
 ExUnit.start()
 
+# Simply pass invoming data to all linked nodes
 defmodule Broadcaster do
   @behaviour DataMesh.NodeLogic
 
-  # Simply pass to subscribers
   def process(data, state, broadcast) do
     broadcast.(data)
     {:ok, state}
   end
 end
 
+# Collecting all received data until a :broadcast or a :reset
 defmodule Collector do
   @behaviour DataMesh.NodeLogic
 
   def init(test_pid) do
-    {:ok,
-     %{
-       test_pid: test_pid,
-       collection: []
-     }}
+    {:ok, []}
   end
 
-  # Send data to registered pid
-  def process(:send, state, _broadcast) do
-    send(state.test_pid, {:received, state.collection})
+  def process(:reset, state, _broadcast) do
+    {:ok, []}
+  end
+
+  def process(:broadcast, state, broadcast) do
+    broadcast.(state)
     {:ok, state}
   end
 
-  # Collect data
   def process(data, state, _broadcast) do
-    new_state = %{state | collection: [data | state.collection]}
+    new_state = [data | state]
     {:ok, new_state}
+  end
+
+  def retrieve(state) do
+    {:ok, state}
   end
 end
 
-defmodule CountDowner do
+# Countown until zero and broadcast the configured data
+defmodule Countdowner do
   @behaviour DataMesh.NodeLogic
 
-  def init(count) do
-    {:ok, %{start: count, count: count}}
+  def init({count, data}) do
+    {:ok, %{start: count, data: data}}
   end
 
-  # Process tick event to count down
-  def process(:tick, state, broadcast) do
+  def process(_data, state, broadcast) do
     new_state =
       if state.count == 1 do
-        broadcast.(:send)
+        broadcast.(state.data)
         %{state | count: state.start}
       else
         %{state | count: state.count - 1}

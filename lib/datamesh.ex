@@ -44,6 +44,17 @@ defmodule DataMesh do
   end
 
   @doc """
+  Retrieves data from a node.
+  """
+  def retrieve_data(node_id, key) do
+    GenServer.call(via_tuple(node_id), {:retrieve_data, key})
+  end
+
+  def retrieve_data(node_id) do
+    GenServer.call(via_tuple(node_id), :retrieve_data)
+  end
+
+  @doc """
   Retrieves information about a specific node.
   """
   def get_node_info(node_id) do
